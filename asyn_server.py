@@ -1,18 +1,21 @@
-import asyncio, grpc
+import asyncio, grpc, uuid
 from grpc_utils.test import grpc_pb2_grpc, grpc_pb2
 import os, time, psutil
+from redis import asyncio as aioredis
 
 REQUESTS_IN_FLIGHT = 0
-
+redis = aioredis.from_url("redis://localhost:6379/0", decode_responses=False)
 
 class Servicer(grpc_pb2_grpc.BenchServicer):
 
     async def Submit(self, request, context):
         global REQUESTS_IN_FLIGHT
         REQUESTS_IN_FLIGHT += 1
+        job_id = uuid.uuid4().hex
         try:
             # print("⇢ start", request)  # 入口
-            await asyncio.sleep(0.075)  # 模拟 I/O
+            # await asyncio.sleep(0.075)  # 模拟 I/O
+            await redis.lpush("inference:tasks", job_id)
             # print("⇠ normal end")
             return grpc_pb2.Empty()
         except asyncio.CancelledError:
